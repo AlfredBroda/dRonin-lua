@@ -4,10 +4,23 @@
 --#  + with opentx 2.16 and above, tested with D4r-II & D8R & X4R                         #
 --#  + works with Arducopter Flight Controller like Pixhawk, APM, PX4 and maybe others    #
 --#                                                                                       #
---#  Thanks to Lupinixx, athertop, gulp79, SockEye, Richardoe, Schicksie,lichtl                                       #    
+--#  Thanks to Lupinixx, athertop, gulp79, SockEye, Richardoe, Schicksie,lichtl           #    
 --#  _ben&Jace25(FPV-Community) and Clooney82&fnoopdogg                                   #
 --#                                                                                       #
 --#  LuaPilot © 2017 ilihack                                                              #
+--#########################################################################################
+-- This program is free software; you can redistribute it and/or modify                   #
+-- it under the terms of the GNU General Public License as published by                   #
+-- the Free Software Foundation; either version 2 of the License, or                      #
+-- (at your option) any later version.                                                    #
+--                                                                                        #
+-- This program is distributed in the hope that it will be useful,                        #
+-- but WITHOUT ANY WARRANTY, without even the implied warranty of                         #
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                           #
+-- GNU General Public License for more details.                                           #
+--                                                                                        #
+-- You should have received a copy of the GNU General Public License                      #
+-- along with this program; if not, see <http://www.gnu.org/licenses>.                    #
 --#########################################################################################
 --Setup:                                                                                  #
 --                                                                                        #
@@ -23,25 +36,79 @@ local MaxAvarageAmpere=0 -- 0=Off, Alarm if the avarage 5s current is over this 
 local CalcBattResistance=0 --0=off 1=AutoCalc Lipo Resistance an correct Lipo.Level ALPHA #   
 local battype=0   -- 0=Autodetection (1s,2s,3s,4s,6s,8s) or 7 for an 7s Battery Conf      #
 local BattLevelmAh = 0 --if 0 BatteryLevel calc from Volt, if -1 Fuel is used else        #
-                       --from this mAh Value                                             #
+                       --from this mAh Value                                              #
 local GPSOKAY=1 --1=play Wav files for Gps Stat , 0= Disable wav Playing for Gps Status   # 
 local SayFlightMode = 1 --0=off 1=on then play wav for Flightmodes changs                 #
 --                                                                                        #
 --######################################################################################### 
-
-
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY, without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
--- GNU General Public License for more details.
---
--- You should have received a copy of the GNU General Public License
--- along with this program; if not, see <http://www.gnu.org/licenses>.
+-- FlightMode to wav file mapping -- case insensitive and spaces stripped
+local fmwav = {
+  acro =	"fm-acr",
+  acrodynamic =	"fm-acr",
+  acrodyne =	"fm-acr",
+  acrolqg =	"zlqg",
+  acroplus =	"fm-acr",
+  althold =	"althld",
+  altitudehold = "althld",
+  angle =	"fm-ang",
+  attitude =	"fm-att",
+  auto =	"automd",
+  autotune =	"atunon",
+  bail =	"bail",
+  baro =	"baro",
+  beast =	"beast",
+  beginer =	"begnr",
+  bombreleased = "bombrel",
+  bombsaway =	"bombawy",
+  bombsreleas =	"bombrel",
+  brake =	"brkmd",
+  circle =	"crclmd",
+  cruise =	"fm-crs",
+  drift =	"drftmd",
+  fail =	"failon",
+  failsafe =	"failon",
+  fast =	"fm-fst",
+  flip =	"fm-flip",
+  float =	"fm-flt",
+  gps =		"gpsmd",
+  guided =	"guidmd",
+  heywatchthis = "haywtc",
+  headfree =	"hdfrmd",
+  horizon =	"fm-hrzn",
+  invalidmode =	"fm-invl",
+  land =	"fm-lnd",
+  landing =	"landing",
+  launch =	"fm-lch",
+  level =	"fm-lvl",
+  leveling =	"fm-lvl",
+  liquidge =	"zlqg",
+  loiter =	"loitr",
+  lqg =		"zlqg",
+  lqgacro =	"zlqg",
+  normal =	"fm-nrm",
+  notelemetry =	"notelem",
+  opticloiter =	"loitr",
+  ping =	"fm-png",
+  poshold =	"poshld",
+  power =	"fm-pwr",
+  race =	"fm-rce",
+  rate =	"fm-rate",
+  rattitude =	"fm-ratt",
+  returnhome =	"rth",
+  returnlaunch = "rtl",
+  rth =		"rth",
+  rtl =		"rtl",
+  speed =	"fm-spd",
+  sport =	"sprt",
+  stabilize =	"stblzmd",
+  stabilized =	"stblzmd",
+  thermal =	"fm-thm",
+  thermalleft =	"fm-tml",
+  thermalright = "fm-tmr",
+  train =	"trngmd",
+  training =	"trngmd",
+  zoom =	"zoommd",
+}
 
 
   local function getTelemetryId(name)
@@ -73,7 +140,7 @@ local data = {}
   data.alt =        0
   data.spd =        0
   data.current =    0
-  data.flightmode=  ''
+  data.flightmode = ''
   data.flightmodeNr=0
   data.rssi =       0
   data.gpssatcount =0
@@ -122,7 +189,7 @@ local data = {}
     {1, 5, 0, -1},
     {2, 5, 0, -2},
     {3, 5, 0, -3},
-    {4, 5, 0, -4}
+    {4, 5, 0, -4},
   }
 --Script Initiation end  
 
@@ -772,18 +839,21 @@ end
 -- Flightmodes Drawing for copter todo for plane,Folow
 -- ###############################################################
 
+    lcd.drawPixmap(50, 2, "/SCRIPTS/BMP/H.bmp")
+
     if rxpercent==0 then
-      data.flightmode='No Telemetry'
+      data.flightmode="No Telemetry"
     end
     
     drawText(68, 1, data.flightmode, MIDSIZE)
     
-    if data.flightmodeNr~=lastflightModeNumber and SayFlightMode == 1 then
-      playFile("/SCRIPTS/WAV/AVFM"..data.flightmodeNr.."A.wav")
-      lastflightModeNumber=data.flightmodeNr
+    data.flightmode = string.lower(string.gsub(data.flightmode, " ", ""))
+    if	data.flightmodeNr ~= lastflightModeNumber and
+	SayFlightMode == 1 and
+	fmwav[data.flightmode] ~= nil then
+      playFile(fmwav[data.flightmode]..".wav")
+      lastflightModeNumber = data.flightmodeNr
     end
-  
-    lcd.drawPixmap(50, 2, "/SCRIPTS/BMP/H.bmp")
 
 
 -- ###############################################################
