@@ -34,10 +34,10 @@ local CellVoltAlarm=3.3 --0=off or like 3.3 to get an Alarm if you have less tha
 --                                                                                        #
 local MaxAvarageAmpere=0 -- 0=Off, Alarm if the avarage 5s current is over this Value     #
 local CalcBattResistance=0 --0=off 1=AutoCalc Lipo Resistance an correct Lipo.Level ALPHA #
-local battype=0   -- 0=Autodetection (1s,2s,3s,4s,6s,8s) or 7 for an 7s Battery Conf      #
+local battype=3   -- 0=Autodetection (1s,2s,3s,4s,6s,8s) or 7 for an 7s Battery Conf      #
 local BattLevelmAh = 0 --if 0 BatteryLevel calc from Volt, if -1 Fuel is used else        #
                        --from this mAh Value                                              #
-local GPSOKAY=0 --1=play Wav files for Gps Stat , 0= Disable wav Playing for Gps Status   #
+local GPSOKAY=1 --1=play Wav files for Gps Stat , 0= Disable wav Playing for Gps Status   #
 local SayFlightMode = 1 --0=off 1=on then play wav for Flightmodes changs                 #
 --                                                                                        #
 --#########################################################################################
@@ -567,10 +567,10 @@ end
 -- function Get new Telemetry Value
 --------------------------------------------------------------------------------
 local function GetnewTelemetryValue()
-local getValue = getValue --faster
+   local getValue = getValue --faster
 
---if Cels is available from FrSky FLVSS then use it, else use VFAS
-local cellResult = getValue(data.celsid)
+   --if Cels is available from FrSky FLVSS then use it, else use VFAS
+   local cellResult = getValue(data.celsid)
    if (type(cellResult) == "table") then
       data.battsum = 0
       if (battype == 0) then
@@ -610,6 +610,11 @@ end
 ---###############################################################
 ---###############################################################
 ---###############################################################
+
+local function round(num, numDecimalPlaces)
+  local mult = 10^(numDecimalPlaces or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
 
   local function draw()
 
@@ -724,8 +729,8 @@ end
         drawText(getLastPos(), 25, round(data.spd*1.149), MIDSIZE)
         drawText(getLastPos(), 29, "mph", SMLSIZE)
       else
-	drawText(getLastPos(), 25, round(data.spd*1.851*2), MIDSIZE)
-	drawText(getLastPos(), 29, "kmh", SMLSIZE)
+      	drawText(getLastPos(), 25, round(data.spd*1.851*2), MIDSIZE)
+      	drawText(getLastPos(), 29, "kmh", SMLSIZE)
       end
 
 
@@ -737,7 +742,7 @@ end
        if settings['imperial'] ~=0 then
          drawText(163,0, "Dist:"..(round(gps_hori_Distance*3.28)).."f",SMLSIZE)
        else
-        drawText(163,0, "Dist:"..(round(gps_hori_Distance)).."m",SMLSIZE)
+         drawText(163,0, "Dist:"..(round(gps_hori_Distance)).."m",SMLSIZE)
       end
 
 
@@ -761,7 +766,7 @@ end
       elseif data.heading <= 360.0 then HdgOrt="N"
     end
 
-    drawText(175,0, HdgOrt.." "..data.heading,SMLSIZE)
+    drawText(163,0, HdgOrt.." "..data.heading,SMLSIZE)
     drawText(getLastPos(), -2, 'o', SMLSIZE)
   end
 
@@ -806,9 +811,9 @@ end
    end
 
    if settings['imperial']~=0 then
-     drawText(getLastPos(), 44, 'f', 0)
+      drawText(getLastPos(), 44, 'f', 0)
    else
-    drawText(getLastPos(), 44, 'm', 0)
+      drawText(getLastPos(), 44, 'm', 0)
    end
 
 
@@ -818,8 +823,8 @@ end
 
    if DisplayTimer==1 then
       drawText(46, 58, "Used: "..(round(totalbatteryComsum))..'mAh',SMLSIZE)
-      elseif DisplayTimer==0 then
-         drawText(46, 58, "Cell: "..(CellVolt)..'V',SMLSIZE)
+   elseif DisplayTimer==0 then
+      drawText(46, 58, "Cell: "..round(CellVolt, 2)..'V',SMLSIZE)
    end
 
 
@@ -887,51 +892,53 @@ end
     local satCount = data.gpssatcount
 
     if data.gpsstatusid==-1 then
-      drawText(68, 15, "Check Telemetry Tem1", SMLSIZE)
+      drawText(70, 1, "Check Telemetry Tem1", SMLSIZE)
+      playFile("/SCRIPTS/WAV/errort.wav")
 
     elseif gpsFix ~= nil and gpsFix >= 4 then
-        drawText(70,15, "3D D.GPS, "..satCount..' Sats', SMLSIZE)
+        drawText(70, 1, "3D D.GPS, "..satCount..' Sats', SMLSIZE)
         if GPSOKAY==1 and satCount>6 then
           GPSOKAY=3
-          playFile("gps.wav")
-          playFile("good.wav")
+          playFile("/SCRIPTS/WAV/gps.wav")
+          playFile("/SCRIPTS/WAV/good.wav")
+        end
+        if data.lat ~= nil and data.lon ~= nil then
+          drawText(70, 9, data.lat.." N", SMLSIZE)
+          drawText(70, 16, data.lon.." E", SMLSIZE)
         end
 
     elseif gpsFix ~= nil and gpsFix == 3 then
-        drawText(70,15, "3D FIX, "..satCount..' Sats', SMLSIZE)
+        drawText(70, 1, "3D FIX, "..satCount..' Sats', SMLSIZE)
         if GPSOKAY==1 and satCount>6 then
           GPSOKAY=3
-          playFile("gps.wav")
-          playFile("good.wav")
+          playFile("/SCRIPTS/WAV/gps.wav")
+          playFile("/SCRIPTS/WAV/good.wav")
+        end
+        if data.lat ~= nil and data.lon ~= nil then
+          drawText(70, 9, data.lat.." N", SMLSIZE)
+          drawText(70, 16, data.lon.." E", SMLSIZE)
         end
 
     elseif gpsFix ~= nil and gpsFix == 2 then
-        drawText(70,15, "2D FIX, "..satCount..' Sats', BLINK+SMLSIZE)
+        drawText(70, 1, "2D FIX, "..satCount..' Sats', BLINK+SMLSIZE)
+        if data.lat ~= nil and data.lon ~= nil then
+          drawText(70, 9, data.lat.." N", SMLSIZE)
+          drawText(70, 16, data.lon.." E", SMLSIZE)
+        end
 
     else
         if satCount ~= nil then
-          drawText(70,15, "NO FIX, "..satCount.." Sats", BLINK+SMLSIZE)
+          drawText(70,1, "NO FIX, "..satCount.." Sats", BLINK+SMLSIZE)
         else
-          drawText(70,15, "NO FIX, no Sats", BLINK+SMLSIZE)
+          drawText(70,1, "NO FIX, no Sats", BLINK+SMLSIZE)
         end
         if GPSOKAY==3 then
           GPSOKAY=1
-          playFile("gps.wav")
-          playFile("bad.wav")
+          playFile("/SCRIPTS/WAV/gps.wav")
+          playFile("/SCRIPTS/WAV/lost.wav")
         end
     end
-
 end
-
-
-
-
-
-
-
-
-
-
 
 --------------------------------------------------------------------------------
 -- BACKGROUND loop FUNCTION
